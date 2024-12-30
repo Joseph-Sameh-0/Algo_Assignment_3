@@ -4,11 +4,11 @@
 #include <string>
 using namespace std;
 
-bool validPath(int n, vector<vector<int>>& edges, int source, int destination)
+bool validPath(int n, vector<vector<int>> &edges, int source, int destination)
 {
     // Create an adjacency list
     vector<vector<int>> graph(n);
-    for (const auto& edge : edges)
+    for (const auto &edge : edges)
     {
         graph[edge[0]].push_back(edge[1]);
         graph[edge[1]].push_back(edge[0]);
@@ -52,7 +52,7 @@ int main()
     cin >> n;
     string s;
     cin >> s;
-    
+
     // Remove '[' , ']' and ',' from the input string
     string r;
     for (char c : s)

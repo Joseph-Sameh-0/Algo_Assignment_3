@@ -96,7 +96,7 @@ int main()
     n = 1;
     cout << leastInterval(tasks, n) << endl;
 
-    tasks = {'A','A','A', 'B','B','B'};
+    tasks = {'A', 'A', 'A', 'B', 'B', 'B'};
     n = 3;
     cout << leastInterval(tasks, n) << endl;
 
