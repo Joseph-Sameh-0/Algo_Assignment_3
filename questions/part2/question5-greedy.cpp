@@ -1,82 +1,153 @@
 #include <iostream>
 #include <vector>
-#include <queue>
-#include <cmath>
-#include <limits>
 #include <algorithm>
+#include <sstream>
 
 using namespace std;
-typedef pair<long long, int> pli;
 
-const long long Infinity = LLONG_MAX;
+const int MAX_CITIES = 100000;
 
-vector<vector<pli>> graph; // Adjacency list
+vector<int> citySets[MAX_CITIES]; // List of sets
+int cityParent[MAX_CITIES];       // Parent array for union-find
 
-vector<long long> dijkstra(int source, int N) {
-    priority_queue<pli, vector<pli>, greater<pli>> pq;
-    vector<long long> dist(N + 1, Infinity);
-
-    dist[source] = 0;
-    pq.push({0, source});
-
-    while (!pq.empty()) {
-        auto [current_dist, u] = pq.top();
-        pq.pop();
-
-        if (current_dist > dist[u]) continue;
-
-        for (auto &[v, weight] : graph[u]) {
-            if (dist[u] + weight < dist[v]) {
-                dist[v] = dist[u] + weight;
-                pq.push({dist[v], v});
-            }
+// Union-find function to merge sets
+void unionCities(int cityA, int cityB)
+{
+    cityA = cityParent[cityA];
+    cityB = cityParent[cityB];
+    if (cityA != cityB)
+    {
+        if (citySets[cityA].size() < citySets[cityB].size())
+        {
+            swap(cityA, cityB);
+        }
+        while (!citySets[cityB].empty())
+        {
+            int city = citySets[cityB].back();
+            citySets[cityB].pop_back();
+            cityParent[city] = cityA;
+            citySets[cityA].push_back(city);
         }
     }
-
-    return dist;
 }
 
-int main() {
-    int N, M;
-    cin >> N >> M;
+vector<vector<pair<int, int>>> cityNeighbors;
+vector<int> edgeCounts(200100, 0);
+vector<int> visitedCities;
+int totalCities, totalEdges;
 
-    // Initialize graph
-    graph.assign(N + 1, vector<pli>());
+// Depth-first search function
+int dfs(int currentCity)
+{
+    visitedCities[currentCity] = 1;
+    int subtreeSize = 1;
+    for (auto neighbor : cityNeighbors[currentCity])
+    {
+        if (visitedCities[neighbor.first])
+        {
+            continue;
+        }
 
-    // Input edges
-    for (int i = 0; i < M; ++i) {
-        int A, B, C;
-        cin >> A >> B >> C;
-        long long weight = pow(2, C);
-        graph[A].emplace_back(B, weight);
-        graph[B].emplace_back(A, weight); // Bidirectional
-    }
+        long long subtree = dfs(neighbor.first);
+        subtreeSize += subtree;
 
-    // Compute sum of all-pairs shortest paths
-    long long total_sum = 0;
-
-    for (int i = 1; i <= N; ++i) {
-        vector<long long> dist = dijkstra(i, N);
-        for (int j = i + 1; j <= N; ++j) { // Avoid double-counting
-            if (dist[j] != Infinity) {
-                total_sum += dist[j];
+        long long possibleWays = subtree * (totalCities - subtree);
+        int currentEdge = neighbor.second;
+        while (possibleWays > 0)
+        {
+            if (possibleWays % 2)
+            {
+                edgeCounts[currentEdge]++;
             }
+            possibleWays /= 2;
+            if (edgeCounts[currentEdge] == 2)
+            {
+                edgeCounts[currentEdge] = 0;
+                possibleWays++;
+            }
+            currentEdge++;
         }
     }
+    return subtreeSize;
+}
 
-    // Convert total sum to binary representation
-    string binaryResult = "";
-    if (total_sum == 0) {
-        binaryResult = "0";
-    } else {
-        while (total_sum > 0) {
-            binaryResult = (total_sum % 2 == 0 ? "0" : "1") + binaryResult;
-            total_sum /= 2;
-        }
+string calculateRoads(int numCities, vector<vector<int>> roads)
+{
+    vector<pair<int, pair<int, int>>> edges;
+
+    // Initialize number of cities and edges
+    totalCities = numCities;
+    totalEdges = roads.size();
+
+    // Read edges
+    for (int i = 0; i < totalEdges; i++)
+    {
+        int cityA = roads[i][0] - 1;
+        int cityB = roads[i][1] - 1;
+        int weight = roads[i][2];
+        edges.push_back(make_pair(weight, make_pair(cityA, cityB)));
     }
 
-    // Output the result
-    cout << binaryResult << endl;
+    cityNeighbors.resize(totalCities);
+    for (int i = 0; i < totalCities; i++)
+    {
+        citySets[i] = vector<int>(1, i);
+        cityParent[i] = i;
+    }
+
+    // Sort edges by weight
+    sort(edges.begin(), edges.end());
+
+    // Process edges using union-find
+    for (auto edge : edges)
+    {
+        int cityA = edge.second.first;
+        int cityB = edge.second.second;
+        int rootA = cityParent[cityA];
+        int rootB = cityParent[cityB];
+        if (rootA == rootB)
+        {
+            continue;
+        }
+        int weight = edge.first;
+        cityNeighbors[cityA].push_back(make_pair(cityB, weight));
+        cityNeighbors[cityB].push_back(make_pair(cityA, weight));
+        unionCities(cityA, cityB);
+    }
+
+    visitedCities = vector<int>(totalCities, 0);
+    dfs(0);
+
+    // Remove trailing zeros from the result
+    while (edgeCounts.back() == 0)
+    {
+        edgeCounts.pop_back();
+    }
+
+    // Convert result to string
+    string resultStr;
+    for (auto it = edgeCounts.rbegin(); it != edgeCounts.rend(); it++)
+    {
+        resultStr += to_string(*it);
+    }
+
+    return resultStr;
+}
+
+int main()
+{
+    int numCities, numEdges;
+    cin >> numCities >> numEdges;
+    vector<vector<int>> roads(numEdges, vector<int>(3));
+
+    for (int i = 0; i < numEdges; i++)
+    {
+        cin >> roads[i][0] >> roads[i][1] >> roads[i][2];
+    }
+
+    // Call the function and print the result
+    string result = calculateRoads(numCities, roads);
+    cout << result << endl;
 
     return 0;
 }
